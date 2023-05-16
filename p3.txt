@@ -1,0 +1,57 @@
+.TH P3
+.SH Justin Adam
+Project 3 File System/Daemon
+
+
+.SH File submission structure
+.SS
+Inside Wad.tar.gz is libWad, which contains a makefile, Wad.h, and Wad.cpp. Also inside Wad.tar.gz is wadfs containing wadfs.cpp and makefile.
+
+
+.SH libWad Description
+.SS
+To organize wad files, loadWad() puts data into an n-array tree (dynamic allocation), and a stack of directories. Wad (dynamic allocation) objects hold a root to a tree and file-header information, where data is parsed using read() and lseek(). Then, the file header is read which has three components (magic, number of descriptors, and descriptor offset) each 4B. Then for each descriptor is read an offset (4B), length (4B), and name (8B). Descriptors represent lumps, which will be tree nodes. Regarding directories, namespace markers show the start of a directory as “_START” (pushes stack), and the directory end as “_END” (pops stack). Map markers however come in the format “E#E#” (has 10 descriptors). There are two helper functions where one created a treenode (create()) and another that returns the node at a path (getPath()). Get functions use a path like getDirectory (iterates from root to fill directory) and getContent (fills content in a buffer), or simply return wad characteristics like getMagic() and getSize(). IsDirectory() and IsContent() iterate the wad tree to see if a particular path exists.
+
+
+.SH wadfs/fuse file-system description
+.SS
+Typical fuse functions (like read) were reassigned to functions created within wadfs.cpp that uses functionality from the libWad directory (ex. loadWad()). Thus, the replaced functionality allows for the mounting of wad files (using fuse.h).
+
+
+.SH wadfs Functions
+.SS static int f_open(const char* path, struct fuse_file_info f*)
+Opens a file and checks for permissions (uses isContent).
+.SS static int f_read(const char* path , char* buff , ::size_t size , off_t offset , struct fuse_file_info* f)
+Reads data into a buffer of a certain size (uses getContents).
+.SS static int f_release(const char* path , struct fuse_file_info* f)
+Releases a file at a certain path checking wad->isContent(path) (returns -1 on failure).
+.SS static int f_open_dir(const char* path , struct fuse_file_info* fileInfo)
+Opens a directory (uses isDirectory() to check).
+.SS static int f_read_dir(const char* path , void* buff , fuse_fill_dir_t filler , off_t offset , struct fuse_file_info* f)
+Reads a directory into a string buffer (uses getDirectory).
+.SS static int f_get(const char* path , struct stat *buff)
+Returns file attributes into the stat buffer (uses getContent()).
+
+
+.SH BUGS
+The daemon works fine except when a command is mistyped. When this occurs the user needs to unmount and remount the directory (with wadfs executable) to be able to view contents again. For example, typing “cat 9.txt” will fail since it should be “cat 09.txt” in sample1.wad. The error message is “transport endpoint is not connected”. Even without mistyping, if this occurs remounting helps.
+
+
+.SH Testing commands:
+.SS
+sudo apt install libfuse-dev fuse
+Sudo chmod 666 /dev/fuse
+Tar zxvf wad.tar.gz
+Cd libWad
+Make
+Cd ..
+Cd wadfs
+Make
+Cd ..
+./wadfs/wadfs file.wad /mount/directory
+C++ -o name file.cpp -L ./libWad -lWad
+./name
+
+
+.SH Youtube link
+https://youtu.be/DqeiEi3Brvw
